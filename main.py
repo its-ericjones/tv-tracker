@@ -1,33 +1,41 @@
-from urllib.request import urlopen
+import requests
 from bs4 import BeautifulSoup
+import pandas as pd
 
 url = input('Enter TV Show name: ').lower() # converting user input to all lowercase
 url = url.replace(' ', '-') # if user input has spaces in title then convert all spaces to hyphens
-url_general = 'https://thetvdb.com/series/' + url # concatenate user url with standard TVDB URL
+
+url_main = 'https://thetvdb.com/series/' + url # concatenate user url with standard TVDB URL
+url_main = requests.get(url_main)
+
 url_seasons = 'https://thetvdb.com/series/' + url + '/allseasons/official'
+url_seasons = requests.get(url_seasons)
 
-soup_home = BeautifulSoup(urlopen(url_general), 'html.parser')
-soup_seasons = BeautifulSoup(urlopen(url_seasons), 'html.parser')
+soup_home = BeautifulSoup(url_main.text, 'html.parser')
+soup_seasons = BeautifulSoup(url_seasons.text, 'html.parser')
 
-# GRABBING TITLE OF SHOW
-table = soup_home.findAll("div", {"class": "col-xs-12 col-sm-8 col-md-8 col-lg-9 col-xl-10"})
-for text in table:
-  title = text.find('h1').text
-  title = title.strip()
+episode_block = soup_seasons.find("div", attrs={"class":"col-xs-12 col-sm-12 col-md-8 col-lg-8"})
 
-# GRABBING DESCRIPTION OF SHOW
-table = soup_home.findAll("div", {"data-language": "eng"})
-for text in table:
-  description = text.find('p').text
-  description = description.strip()
+episode_number = []
+episode_title = []
+episode_air_date = []
+episode_description = []
 
-# GRABBING NUMBER OF SEASONS
-number_of_seasons = soup_seasons.findAll('h3', attrs={'class':'mt-4'})
-number_of_seasons = (len(number_of_seasons))
+for items in episode_block.findAll("li", attrs={"class": "list-group-item"}):
+    number = items.find("h4", attrs={"class": "list-group-item-heading"}).findChildren()[0].text
+    title = items.find("h4", attrs={"class": "list-group-item-heading"}).findChildren()[1].text
+    air_date = items.find("ul", attrs={"class": "list-inline text-muted"}).findChildren()[0].text
+    description = items.find("div", attrs={"class": "col-xs-9"}).findChildren()[0].text
 
-print('\n')
-print('Title:', title)
-print('\n')
-print('Description:', description)
-print('\n')
-print("No. of Seasons:", number_of_seasons)
+    episode_number.append(number)
+    episode_title.append(title)
+    episode_air_date.append(air_date)
+    episode_description.append(description)
+    
+df=pd.DataFrame ({
+    'Number':episode_number,
+    'Title':episode_title,
+    'Air Date':episode_air_date,
+    'Description': episode_description
+})
+df.to_csv("test.csv")
